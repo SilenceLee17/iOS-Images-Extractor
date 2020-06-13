@@ -282,21 +282,111 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
             
             
             dispatch_async(dispatch_get_main_queue(), ^{
-                [self setStatusString:@"Jobs done, have fun."];
-                
-                // 取消禁用
-                self.dragView.dragEnable = YES;
-                self.clearButton.enabled = YES;
-                self.startButton.enabled = YES;
+                [self setStatusString:@"start create csv file"];
+
                 
                 // 重置参数
                 self.needClearDragList = YES;
                 [self.allFileList removeAllObjects];
+    
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self createXLSFile:self.currentOutputPath];
+                    [self setStatusString:@"Jobs done, have fun."];
+                    // 取消禁用
+                    self.dragView.dragEnable = YES;
+                    self.clearButton.enabled = YES;
+                    self.startButton.enabled = YES;
+                });
+                
             });
         });
     }
 }
 
+
+- (void)createXLSFile:(NSString *)path {
+    // 创建存放XLS文件数据的数组
+    NSMutableArray *xlsDataMuArr = [[NSMutableArray alloc] init];
+    // 第一行内容
+    [xlsDataMuArr addObject:@"NAME"];
+    [xlsDataMuArr addObject:@"SIZE(KB)"];
+    NSInteger lineCount = 2;
+    [xlsDataMuArr addObjectsFromArray:[self showAllFileWithPath:path]];
+
+    // 把数组拼接成字符串，连接符是 \t（功能同键盘上的tab键）
+    NSString *fileContent = [xlsDataMuArr componentsJoinedByString:@"\t"];
+    // 字符串转换为可变字符串，方便改变某些字符
+    NSMutableString *muStr = [fileContent mutableCopy];
+    // 新建一个可变数组，存储每行最后一个\t的下标（以便改为\n）
+    NSMutableArray *subMuArr = [NSMutableArray array];
+    for (int i = 0; i < muStr.length; i ++) {
+        NSRange range = [muStr rangeOfString:@"\t" options:NSBackwardsSearch range:NSMakeRange(i, 1)];
+        if (range.length == 1) {
+            [subMuArr addObject:@(range.location)];
+        }
+    }
+    // 替换末尾\t
+    for (NSUInteger i = 0; i < subMuArr.count; i ++) {
+        if ( i > 0 && (i%lineCount == 0) ) {
+            [muStr replaceCharactersInRange:NSMakeRange([[subMuArr objectAtIndex:i-1] intValue], 1) withString:@"\n"];
+        }
+    }
+    // 文件管理器
+    NSFileManager *fileManager = [[NSFileManager alloc]init];
+    //使用UTF16才能显示汉字；如果显示为#######是因为格子宽度不够，拉开即可
+    NSData *fileData = [muStr dataUsingEncoding:NSUTF16StringEncoding];
+    // 文件路径
+    NSString *filePath = [path stringByAppendingPathComponent:@"/export.csv"];
+    
+    NSString *outputDirectoryPath = [path stringByExpandingTildeInPath];
+    
+    if (![[NSFileManager defaultManager] fileExistsAtPath:outputDirectoryPath]) {
+        [[NSFileManager defaultManager] createDirectoryAtPath:outputDirectoryPath withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    
+    NSLog(@"文件路径：\n%@",filePath);
+    
+    // 生成xls文件
+    [fileManager createFileAtPath:filePath contents:fileData attributes:nil];
+}
+
+- (NSMutableArray *)showAllFileWithPath:(NSString *) path {
+    NSMutableArray *xlsDataMuArr = [NSMutableArray array];
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    BOOL isDir = NO;
+    BOOL isExist = [fileManger fileExistsAtPath:path isDirectory:&isDir];
+    if (isExist) {
+        if (isDir) {
+            NSArray * dirArray = [fileManger contentsOfDirectoryAtPath:path error:nil];
+            NSString * subPath = nil;
+            for (NSString * str in dirArray) {
+                subPath  = [path stringByAppendingPathComponent:str];
+                BOOL issubDir = NO;
+                [fileManger fileExistsAtPath:subPath isDirectory:&issubDir];
+                [xlsDataMuArr addObjectsFromArray:[self showAllFileWithPath:subPath]];
+            }
+        }else{
+            long long fileSize = [self fileSizeAtPath:path];
+            NSString *fileName = [[path componentsSeparatedByString:@"/"] lastObject];
+            if (fileSize > 0) {
+                [xlsDataMuArr addObject:fileName];
+                [xlsDataMuArr addObject:[NSString stringWithFormat:@"%.1f",fileSize/1000.0]];
+            }
+            
+        }
+    }
+    return xlsDataMuArr;
+}
+
+
+- (unsigned long long)fileSizeAtPath:(NSString *)filePath {
+    NSFileManager *manager = [NSFileManager defaultManager];
+    if ([manager fileExistsAtPath:filePath]){
+        return [[manager attributesOfItemAtPath:filePath error:nil] fileSize];
+    }
+    return 0;
+}
 
 - (void)clickMenuItem:(NSMenuItem *)sender {
     
