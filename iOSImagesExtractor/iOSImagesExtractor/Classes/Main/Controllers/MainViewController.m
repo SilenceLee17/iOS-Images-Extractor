@@ -134,7 +134,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
 
     // 获取CARExtractor执行程序路径
     // 1,先从Resource目录查找
-    NSString *tmpPath = [[[NSBundle mainBundle]resourcePath]stringByAppendingPathComponent:@"CARExtractor"];
+    NSString *tmpPath = [[[NSBundle mainBundle]resourcePath]stringByAppendingPathComponent:@"cartool"];
     if (![[NSFileManager defaultManager]fileExistsAtPath:tmpPath]) {
         tmpPath = nil;
 //        // 2,再从app同级目录查找
@@ -654,7 +654,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
     NSTask *task = [[NSTask alloc] init];
     [task setLaunchPath:self.carExtractorLocation];
     
-    NSArray *arguments = @[path, outputPath, [NSString stringWithFormat:@"--DistributedNotificationName=%@", [NSBundle mainBundle].bundleIdentifier]];
+    NSArray *arguments = @[path, outputPath];
     [task setArguments:arguments];
     
     
