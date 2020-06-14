@@ -246,7 +246,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             
             [self getAllFilesFromDragPaths];
-            // 处理现有的png、jpg文件
+            // 处理现有的png、jpg文件(包含但是名字不对，xcassets有映射关系)
             NSArray *imagesArray = [self.allFileList filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF.filePath.pathExtension IN {'jpg', 'png'}"]];
             
             if (imagesArray.count > 0) {
