@@ -31,6 +31,7 @@
 		C2AE37681B1992090099434F /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = C2AE37671B1992090099434F /* LICENSE */; };
 		C2CF8B821B17F7EC00AA92B1 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = C24D24F11B16047E00DDE534 /* MainMenu.xib */; };
 		F39D8F632494C29300738E11 /* cartool in Resources */ = {isa = PBXBuildFile; fileRef = F39D8F622494C29300738E11 /* cartool */; };
+		F39D8F662495D64800738E11 /* XSSCVItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F39D8F652495D64800738E11 /* XSSCVItem.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -130,6 +131,8 @@
 		C2CF8B851B1805EF00AA92B1 /* CARExtractor */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = CARExtractor; path = ../../CARExtractor/Product/CARExtractor; sourceTree = "<group>"; };
 		F39D8F562494BD0900738E11 /* cartool.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cartool.xcodeproj; path = ../cartool/cartool.xcodeproj; sourceTree = "<group>"; };
 		F39D8F622494C29300738E11 /* cartool */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = cartool; path = ../../Products/cartool; sourceTree = "<group>"; };
+		F39D8F642495D64800738E11 /* XSSCVItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XSSCVItem.h; sourceTree = "<group>"; };
+		F39D8F652495D64800738E11 /* XSSCVItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XSSCVItem.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -282,6 +285,8 @@
 			children = (
 				C24D25381B16054700DDE534 /* XMFileItem.h */,
 				C24D25391B16054700DDE534 /* XMFileItem.m */,
+				F39D8F642495D64800738E11 /* XSSCVItem.h */,
+				F39D8F652495D64800738E11 /* XSSCVItem.m */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -498,6 +503,7 @@
 				C24D254E1B16110000DDE534 /* DCOTransparentScrollView.m in Sources */,
 				C24D252E1B16053200DDE534 /* unzip.c in Sources */,
 				C24D252D1B16053200DDE534 /* mztools.c in Sources */,
+				F39D8F662495D64800738E11 /* XSSCVItem.m in Sources */,
 				C24D253A1B16054700DDE534 /* XMFileItem.m in Sources */,
 				C24D253E1B16058A00DDE534 /* XMDragView.m in Sources */,
 				C24D25141B16051500DDE534 /* AppDelegate.m in Sources */,

@@ -14,6 +14,7 @@
 
 #pragma mark - Models
 #import "XMFileItem.h"
+#import "XSSCVItem.h"
 
 #pragma mark - Views
 #import "XMDragView.h"
@@ -70,7 +71,7 @@
 /**
  *  遍历出的所有文件
  */
-@property (nonatomic, strong) NSMutableArray *allFileList;
+@property (nonatomic, strong) NSMutableArray<XMFileItem *> *allFileList;
 
 
 
@@ -279,40 +280,65 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
             // 解压并处理ipa文件
             [self doIpaFile];
             
-            
+
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self setStatusString:@"start create csv file"];
-
                 
+//                [self.allFileList enumerateObjectsUsingBlock:^(XMFileItem *item, NSUInteger idx, BOOL * _Nonnull stop) {
+//                    [self createXLSFile:item.filePath];
+//
+//                }];
+                
+
+                NSFileManager * fileManger = [NSFileManager defaultManager];
+                BOOL isDir = NO;
+                BOOL isExist = [fileManger fileExistsAtPath:self.currentOutputPath isDirectory:&isDir];
+                if (isExist && isDir) {
+                        NSArray * dirArray = [fileManger contentsOfDirectoryAtPath:self.currentOutputPath error:nil];
+                        NSString * subPath = nil;
+                        for (NSString * str in dirArray) {
+                            subPath  = [self.currentOutputPath stringByAppendingPathComponent:str];
+                            BOOL issubDir = NO;
+                            [fileManger fileExistsAtPath:subPath isDirectory:&issubDir];
+                            if (issubDir) {
+                                [self createXLSFile:subPath outputPtah:self.currentOutputPath];
+                            }
+                        }
+                }
+                
+                
+                [self setStatusString:@"Jobs done, have fun."];
                 // 重置参数
                 self.needClearDragList = YES;
                 [self.allFileList removeAllObjects];
-    
-                
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [self createXLSFile:self.currentOutputPath];
-                    [self setStatusString:@"Jobs done, have fun."];
-                    // 取消禁用
-                    self.dragView.dragEnable = YES;
-                    self.clearButton.enabled = YES;
-                    self.startButton.enabled = YES;
-                });
-                
+                // 取消禁用
+                self.dragView.dragEnable = YES;
+                self.clearButton.enabled = YES;
+                self.startButton.enabled = YES;
             });
-        });
-    }
+    });
+}
 }
 
 
-- (void)createXLSFile:(NSString *)path {
+- (void)createXLSFile:(NSString *)path outputPtah:(NSString *)outputPtah{
     // 创建存放XLS文件数据的数组
     NSMutableArray *xlsDataMuArr = [[NSMutableArray alloc] init];
     // 第一行内容
     [xlsDataMuArr addObject:@"NAME"];
     [xlsDataMuArr addObject:@"SIZE(KB)"];
     NSInteger lineCount = 2;
-    [xlsDataMuArr addObjectsFromArray:[self showAllFileWithPath:path]];
+    NSArray<XSSCVItem *> *items = [self showAllFileWithPath:path];
+    
+    NSSortDescriptor *sorter = [[NSSortDescriptor alloc] initWithKey:@"fileSize" ascending:NO];
+    NSArray *sortDescriptors = [[NSArray alloc] initWithObjects:&sorter count:1];
+    NSArray *sortedArray = [items sortedArrayUsingDescriptors:sortDescriptors];
+    
+    for (XSSCVItem *item in sortedArray) {
+        [xlsDataMuArr addObject:item.fileName];
+        [xlsDataMuArr addObject:item.formatSize];
+    }
 
     // 把数组拼接成字符串，连接符是 \t（功能同键盘上的tab键）
     NSString *fileContent = [xlsDataMuArr componentsJoinedByString:@"\t"];
@@ -337,9 +363,11 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
     //使用UTF16才能显示汉字；如果显示为#######是因为格子宽度不够，拉开即可
     NSData *fileData = [muStr dataUsingEncoding:NSUTF16StringEncoding];
     // 文件路径
-    NSString *filePath = [path stringByAppendingPathComponent:@"/export.csv"];
+    NSString *bundleName =  [[path componentsSeparatedByString:@"/"] lastObject];
+    bundleName = [bundleName stringByReplacingOccurrencesOfString:@"." withString:@"_"];
+    NSString *filePath = [outputPtah stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.csv",bundleName]];
     
-    NSString *outputDirectoryPath = [path stringByExpandingTildeInPath];
+    NSString *outputDirectoryPath = [outputPtah stringByExpandingTildeInPath];
     
     if (![[NSFileManager defaultManager] fileExistsAtPath:outputDirectoryPath]) {
         [[NSFileManager defaultManager] createDirectoryAtPath:outputDirectoryPath withIntermediateDirectories:YES attributes:nil error:nil];
@@ -351,7 +379,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
     [fileManager createFileAtPath:filePath contents:fileData attributes:nil];
 }
 
-- (NSMutableArray *)showAllFileWithPath:(NSString *) path {
+- (NSArray<XSSCVItem *> *)showAllFileWithPath:(NSString *) path {
     NSMutableArray *xlsDataMuArr = [NSMutableArray array];
     NSFileManager * fileManger = [NSFileManager defaultManager];
     BOOL isDir = NO;
@@ -367,25 +395,14 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
                 [xlsDataMuArr addObjectsFromArray:[self showAllFileWithPath:subPath]];
             }
         }else{
-            long long fileSize = [self fileSizeAtPath:path];
-            NSString *fileName = [[path componentsSeparatedByString:@"/"] lastObject];
-            if (fileSize > 0) {
-                [xlsDataMuArr addObject:fileName];
-                [xlsDataMuArr addObject:[NSString stringWithFormat:@"%.1f",fileSize/1000.0]];
+            XSSCVItem *item = [[XSSCVItem alloc] initWithPath:path];
+            if (item.fileSize > 0) {
+                [xlsDataMuArr addObject:item];
             }
             
         }
     }
-    return xlsDataMuArr;
-}
-
-
-- (unsigned long long)fileSizeAtPath:(NSString *)filePath {
-    NSFileManager *manager = [NSFileManager defaultManager];
-    if ([manager fileExistsAtPath:filePath]){
-        return [[manager attributesOfItemAtPath:filePath error:nil] fileSize];
-    }
-    return 0;
+    return xlsDataMuArr.copy;
 }
 
 - (void)clickMenuItem:(NSMenuItem *)sender {
