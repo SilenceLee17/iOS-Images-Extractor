@@ -254,7 +254,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
                 [MainViewController createDirectoryWithPath:existImagesPath];
                 for (int i = 0; i < imagesArray.count; ++i) {
                     XMFileItem *item = imagesArray[i];
-                    [self doPngOrJpgFileWithPath:item.filePath outputPath:existImagesPath];
+                    [self doPngOrJpgFileWithPath:item.filePath fileName:item.fileName outputPath:existImagesPath];
                 }
             }
             
@@ -664,7 +664,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
         }
         else {// 处理png,jpg
             [self setStatusString:[NSString stringWithFormat:@"Processing %@ ...", fileItem.fileName]];
-            [self doPngOrJpgFileWithPath:fileItem.filePath outputPath:outputPath];
+            [self doPngOrJpgFileWithPath:fileItem.filePath fileName:fileItem.fileName outputPath:outputPath];
         }
     }
     
@@ -692,7 +692,7 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
  *  @param path       文件路径
  *  @param outputPath 保存路径
  */
-- (void)doPngOrJpgFileWithPath:(NSString*)path outputPath:(NSString*)outputPath
+- (void)doPngOrJpgFileWithPath:(NSString*)path fileName:(NSString *)fileName outputPath:(NSString*)outputPath
 {
     NSImage *tmpImage = [[NSImage alloc]initWithContentsOfFile:path];
     
@@ -700,23 +700,82 @@ static void distributedNotificationCallback(CFNotificationCenterRef center,
         return;
     }
     
-    NSString *extension = [path pathExtension];
-    NSData *saveData = nil;
+    [self copyBigFileWithPath:path outputPath:[NSString stringWithFormat:@"%@/%@",outputPath,fileName]];
     
-    if ([extension isEqualToString:@"png"]) {
-        saveData = [self imageDataWithImage:tmpImage bitmapImageFileType:NSBitmapImageFileTypePNG];
-    }
-    else if ([extension isEqualToString:@"jpg"]){
-        saveData = [self imageDataWithImage:tmpImage bitmapImageFileType:NSBitmapImageFileTypeJPEG];
-    }
-    
-    // 写入新文件
-    if (saveData) {
-        outputPath = [outputPath stringByAppendingPathComponent:[path lastPathComponent]];
-        [saveData writeToFile:outputPath atomically:YES];
-    }
+//    NSString *extension = [path pathExtension];
+//    NSData *saveData = nil;
+//
+//    if ([extension isEqualToString:@"png"]) {
+//        saveData = [self imageDataWithImage:tmpImage bitmapImageFileType:NSBitmapImageFileTypePNG];
+//    }
+//    else if ([extension isEqualToString:@"jpg"]){
+//        saveData = [self imageDataWithImage:tmpImage bitmapImageFileType:NSBitmapImageFileTypeJPEG];
+//    }
+//
+//    // 写入新文件
+//    if (saveData) {
+//        outputPath = [outputPath stringByAppendingPathComponent:[path lastPathComponent]];
+//        [saveData writeToFile:outputPath atomically:YES];
+//    }
     
 
+}
+
+//拷贝大文件
+- (void)copyBigFileWithPath:(NSString*)sourcePath outputPath:(NSString*)targetPath {
+    //准备：把大的文件的放在/Documents/source.pdf
+    //需求：大的source.pdf的内容分批地拷贝到target.pdf
+    //1.获取两个文件的路径
+//    NSString *sourcePath = path;
+//    NSString *targetPath = outputPath;
+    //2.创建空的target.pdf文件
+    [[NSFileManager defaultManager] createFileAtPath:targetPath contents:nil attributes:nil];
+    //3.创建两个NSFileHandle对象
+    NSFileHandle *sourceHandle = [NSFileHandle fileHandleForReadingAtPath:sourcePath];
+    NSFileHandle *targetHandle = [NSFileHandle fileHandleForWritingAtPath:targetPath];
+    //4.while循环分批拷贝
+    //设定每次从源文件读取5000bytes
+    int dataSizePerTimes = 5000;
+//    //源文件的总大小(方式一)
+//    NSDictionary *sourceFileDic = [[NSFileManager defaultManager] attributesOfItemAtPath:sourcePath error:nil];
+//    NSLog(@"源文件pdf的属性字典:%@", sourceFileDic);
+//    //单位：bytes
+//    NSNumber *fileSize = [sourceFileDic objectForKey:NSFileSize];
+//    int fileTotalSize = [fileSize intValue];
+    /*源文件的总大小(方式二)
+      坑：如下的方法会把源文件handle对象直接指向最后
+     */
+    unsigned long long fileTotalSize = [sourceHandle seekToEndOfFile];
+    //把挪动到最后的文件指针挪到最前面(相对于文件的开头的偏移量offset)
+    [sourceHandle seekToFileOffset:0];
+    //已经读取源文件的总大小
+    int readFileSize = 0;
+    
+    //while循环
+    while (1) {
+        //计算剩余没有读取的数据的大小
+        unsigned long long leftSize = fileTotalSize - readFileSize;
+        //情况一：剩余不足5000bytes
+        if (leftSize < dataSizePerTimes) {
+            //直接读取剩下的所有数据
+            NSData *leftData = [sourceHandle readDataToEndOfFile];
+            //写入目标文件
+            [targetHandle writeData:leftData];
+            //跳出循环
+            break;
+        } else {
+            //情况二:每次读取5000bytes
+            NSData *data = [sourceHandle readDataOfLength:dataSizePerTimes];
+            //写入目标文件
+            [targetHandle writeData:data];
+            //更新已经读取的数据大小
+            readFileSize += dataSizePerTimes;
+        }
+    }
+    
+    //收尾工作(关闭指向)
+    [sourceHandle closeFile];
+    [targetHandle closeFile];
 }
 
 
